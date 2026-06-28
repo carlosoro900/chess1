@@ -1,37 +1,103 @@
 //needed imports
-const express = require('express');
 const path = require('path');
-const { Socket } = require('socket.io');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-require('dotenv').config();
+require('dotenv').config({path: path.join(__dirname,'../.env')});
+
+const http = require('http'),
+    express = require('express'),
+    session = require('express-session'),
+    pgSession = require('connect-pg-simple')(session),
+    socket = require('socket.io');
+
+const config = require('../config');
+const {pool} = require('./database/db');
+const {requireAuth, setUserData} = require('./middleware/auth');
+const authRoutes = require('./routes/auth');
+
+const myIo = require('./sockets/io'),
+    routes = require('./routes/routes');
+const { flushCompileCache } = require('module');
+
+const app = express(),
+    server = http.Server(app),
+    io = socket(server);
 
 //Midleware
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname,'../front')));
+app.use(express.urlencoded({extended:true}));
 
-//Routes for views
-app.get('/',(req,res)=>{
-    res.sendFile(path.join(__dirname,'../front/views/index.html'));
+//Session settings
+app.use(session({
+    store: new pgSession({
+        pool,
+        tableName: 'session',
+        //clean expired session
+        pruneSessionInterval: 60
+    }),
+    secret: process.env.SESSION_SECRET || 'your_session_secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie:{
+        expires: false,
+        rolling: true,
+        maxAge: 3*60*1000
+    }
+}));
+
+//Static files
+app.use('/public',express.static(path.join(__dirname,'../front/public')));
+app.use(express.static(path.join(__dirname,'..','front')));
+app.use(setUserData);
+
+// View configuration
+app.set('views', path.join(__dirname, '../front/views'));
+app.set('view engine', 'html');
+app.engine('html', require('express-handlebars').engine({
+    extname: 'html',
+    defaultLayout: false,
+    helpers: {
+        json: function (context) {
+            return JSON.stringify(context);
+        }
+    }
+}));
+
+// public routes
+app.use('/auth', authRoutes);
+
+app.get('/login', (req, res) => {
+    if (req.session.userId) {
+        return res.redirect('/');
+    }
+    res.render('login');
 });
 
-app.get('/login',(req,res)=>{
-    res.sendFile(path.join(__dirname,'../front/views/login.html'));
+app.get('/register', (req, res) => {
+    if (req.session.userId) {
+        return res.redirect('/');
+    }
+    res.render('register');
 });
 
-app.get('/register',(req,res)=>{
-    res.sendFile(path.join(__dirname,'../front/views/register.html'));
+// protected main route
+app.get('/', requireAuth, (req, res) => {
+    res.render('index', { user: res.locals.user });
 });
 
-//basic Socket.io settings
-io.on('conection',(socket)=>{
-    console.log('a user connected');
-    socket.on('disconnect',()=>{
-        console.log('user disconnected');
-    });
+//game routes
+app.use('/game', requireAuth, routes);
+
+// Socket.io configuration
+myIo(io);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ 
+        sucess: false,
+        message: 'Internal server error'});
 });
+
 
 //Port Settings and server start
 
