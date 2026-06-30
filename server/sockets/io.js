@@ -11,7 +11,7 @@ module.exports = function(io) {
         // event when a player tries to join a game
         socket.on('joinGame', (data) => {
            const { code, color, timeControl, username } = data;
-           console.log('Player ${username} joining game ${code} as ${color}');
+           console.log(`Player ${username} joining game ${code} as ${color}`);
 
            // if the game does not exist, create it with initial values
            if (!games[code]) {
@@ -52,7 +52,7 @@ module.exports = function(io) {
 
            // if both players are connected we notify everyone in the game room
            if (games[code].white && games[code].black) {
-            console.log('Both players are connected in game ${code}');
+            console.log(`Both players are connected in game ${code}`);
 
             io.to(code).emit('playersConnected', {
                 white: players[games[code].white].username,
@@ -70,7 +70,7 @@ module.exports = function(io) {
             const game = games[player.gameCode];
             if (!game) return;
 
-            console.log('Player ${player.username} is ready');
+            console.log(`Player ${player.username} is ready`);
 
             if (player.color === 'white') {
                 game.whiteReady = true;
@@ -80,7 +80,7 @@ module.exports = function(io) {
 
             // if both players are ready and the game is not started, we start the game
             if (game.whiteReady && game.blackReady && !game.gameStarted) {
-                console.log('Game ${player.gameCode} starting');
+                console.log(`Game ${player.gameCode} starting`);
                 game.gameStarted = true;
                 io.to(player.gameCode).emit('bothPlayersReady');
 
@@ -134,7 +134,7 @@ module.exports = function(io) {
                 console.log('Move rejected: Not player\'s turn');
                 return;
             }
-            console.log('Move from ${player.color} in game ${player.gameCode}: ${data.from} to ${data.to}');
+            console.log(`Move from ${player.color} in game ${player.gameCode}: ${data.from} to ${data.to}`);
 
             // we change the turn
             game.turn = game.turn === 'white' ? 'black' : 'white';
@@ -154,7 +154,7 @@ module.exports = function(io) {
             const player = players[socket.id];
             if (!player) return;
 
-            console.log('Chat message from ${player.username}; ${message}');
+            console.log(`Chat message from ${player.username}; ${message}`);
 
             // we send the message to all players in the game
             io.to(player.gameCode).emit('chat',{
@@ -169,7 +169,7 @@ module.exports = function(io) {
         socket.on('disconnect', () => {
             const player = players[socket.id];
             if (player) {
-                console.log('Player ${player.username} disconnected from game ${player.gameCode}');
+                console.log(`Player ${player.username} disconnected from game ${player.gameCode}`);
 
                 const game = games[player.gameCode];
                 if (game) {

@@ -26,20 +26,26 @@ const app = express(),
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
+//Prueba:Borrar si es necesario-----------------------------------------------
+//app.listen(3000, '0.0.0.0');
+//server.listen(3000);
+//----------------------------------------------------------------------------
+
 //Session settings
 app.use(session({
     store: new pgSession({
         pool,
         tableName: 'session',
         //clean expired session
-        pruneSessionInterval: 60
+        pruneSessionInterval: 60 * 60
     }),
     secret: process.env.SESSION_SECRET || 'your_session_secret',
     resave: false,
     saveUninitialized: false,
     cookie:{
-        expires: false,
-        rolling: true,
+        //expires: false,
+        //rolling: true,
+        httpOnly: true,
         maxAge: 3*60*1000
     }
 }));
@@ -102,6 +108,6 @@ app.use((err, req, res, next) => {
 //Port Settings and server start
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT,()=>{
+server.listen(PORT,()=>{
     console.log(`Server running on port ${PORT}`);
 });

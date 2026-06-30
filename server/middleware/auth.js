@@ -13,7 +13,7 @@ const setUserData = async(req,res,next) => {
                 'SELECT id, username FROM users WHERE id = $1',
                 [req.session.userId]
             );
-            res.local.user = result.rows[0];
+            res.locals.user = result.rows[0];
         }catch(err){
             console.error('Error fetching user data',err);
         }
